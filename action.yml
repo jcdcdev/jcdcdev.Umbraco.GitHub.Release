@@ -28,7 +28,7 @@ runs:
       id: set-env
       shell: bash
       run: |
-        echo "SEMVER=${{ inputs.version }}" >> $GITHUB_ENV
+        echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
         echo "ARTIFACT_NAME=${{ inputs.artifact-name }}" >> $GITHUB_ENV
         echo "NUGET_API_KEY=${{ inputs.nuget-api-key }}" >> $GITHUB_ENV
         echo "ARTIFACT_PATH=./packages" >> $GITHUB_ENV
@@ -39,8 +39,9 @@ runs:
         path: ${{ env.ARTIFACT_PATH }}
     - name: Push to NuGet
       shell: bash
-      run: dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+      run: |
+        dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
     - name: 🚀 Create release
-      uses: jcdcdev/jcdcdev.Github.UmbracoSimpleDeploy/.github/workflows/update-release.yml@main
+      uses: jcdcdev/jcdcdev.GitHub.CreateRelease@main
       with:
-        version: ${{ inputs.version }}
+        version: ${{ env.VERSION }}

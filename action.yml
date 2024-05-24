@@ -41,7 +41,7 @@ runs:
     - name: Push to NuGet
       shell: bash
       run: |
-        # dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }}
+        dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }}
     - name: 🚀 Create release
       uses: jcdcdev/jcdcdev.GitHub.CreateRelease@main
       with:

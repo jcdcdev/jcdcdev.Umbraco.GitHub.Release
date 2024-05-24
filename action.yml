@@ -21,6 +21,13 @@ inputs:
   nuget-api-key:
     description: "NuGet API key"
     required: true
+  github-token:
+    description: "GitHub token"
+    required: true
+  nuget-source:
+    description: "NuGet source"
+    default: "https://api.nuget.org/v3/index.json"
+    required: false
 runs:
   using: "composite"
   steps:
@@ -32,6 +39,7 @@ runs:
         echo "ARTIFACT_NAME=${{ inputs.artifact-name }}" >> $GITHUB_ENV
         echo "NUGET_API_KEY=${{ inputs.nuget-api-key }}" >> $GITHUB_ENV
         echo "ARTIFACT_PATH=./packages" >> $GITHUB_ENV
+        echo "NUGET_SOURCE=${{ inputs.nuget-source }}" >> $GITHUB_ENV
     - name: Download package
       uses: actions/download-artifact@v2
       with:
@@ -40,8 +48,9 @@ runs:
     - name: Push to NuGet
       shell: bash
       run: |
-        dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+        dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }}
     - name: 🚀 Create release
       uses: jcdcdev/jcdcdev.GitHub.CreateRelease@main
       with:
         version: ${{ env.VERSION }}
+        github-token: ${{ inputs.github-token }}

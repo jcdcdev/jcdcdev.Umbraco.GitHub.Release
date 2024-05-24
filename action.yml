@@ -4,13 +4,6 @@ author: "James Carter"
 branding:
   icon: "refresh-cw"
   color: "gray-dark"
-outputs:
-  artifact-name:
-    description: "Artifact name"
-    value: ${{ steps.get-version.artifact-name }}
-  version:
-    description: "Version"
-    value: ${{ steps.get-version.package-version }}
 inputs:
   artifact-name:
     description: "Artifact name"

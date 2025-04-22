@@ -13,13 +13,17 @@ inputs:
     required: true
   nuget-api-key:
     description: "NuGet API key"
-    required: true
+    required: false
   github-token:
     description: "GitHub token"
     required: true
   nuget-source:
     description: "NuGet source"
     default: "https://api.nuget.org/v3/index.json"
+    required: false
+  nuget-skip-push:
+    description: "Skip NuGet push"
+    default: "false"
     required: false
 runs:
   using: "composite"
@@ -39,6 +43,7 @@ runs:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_PATH }}
     - name: Push to NuGet
+      if: ${{ inputs.nuget-skip-push != 'true' }}
       shell: bash
       run: |
         dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }} --skip-duplicate

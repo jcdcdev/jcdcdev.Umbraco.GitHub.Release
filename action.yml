@@ -25,9 +25,89 @@ inputs:
     description: "Skip NuGet push"
     default: "false"
     required: false
+  ignore-files:
+    description: "Skip release if only these files are changed"
+    default: "SECURITY.md,.github/README.md"
+    required: false
 runs:
   using: "composite"
   steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check for changes
+      id: check-changes
+      shell: pwsh
+      run: |
+        $IGNORE_FILES="${{ inputs.ignore-files }}"
+        $currentBranch = git symbolic-ref --short HEAD 2>&1
+        $tags = git for-each-ref --sort=creatordate --format '%(refname:short)' refs/tags
+        $mergedTags = git tag --merged $currentBranch --sort=creatordate
+
+        Write-Host "Current branch: $currentBranch"
+        $allowPrelease = $currentBranch -like "*/dev"
+        Write-Host "Tags on current branch: $mergedTags"
+        # iterate in reverse order to find the last tag
+        $lastTag = $null
+        for($i = $mergedTags.Count - 1; $i -ge 0; $i--) {
+            $tag = $mergedTags[$i]
+            # check if tag is a pre-release tag
+            if ($tag -like "*-*" -and !$allowPrelease) {
+                Write-Host "Skipping pre-release tag: $tag"
+                continue
+            }
+            $lastTag = $tag
+            Write-Host "Last release tag found: $lastTag"
+            break
+        }
+
+        if (-not $lastTag) {
+            Write-Host "No release tags found on current branch, skipping release."
+            exit 1
+        }
+
+        # List all changed files since the last release tag
+        $changedFiles = git diff --name-only "$lastTag...$currentBranch"
+        Write-Host "Changed files since last tag:`n`n$changedFiles`n`n"
+        # Initialize flag
+        $ignoreRelease = $true
+        
+        if (-not $changedFiles) {
+            Write-Host "No changed files found since last tag, skipping release."
+            exit 1
+        }
+
+        # Iterate through changed files
+        foreach ($file in $changedFiles.Split()) {
+            # Split and trim ignore patterns
+            $ignorePatterns = @($IGNORE_FILES.Split(',').Trim())
+            
+            # Check if file matches any ignore pattern
+            $ignoreFiles = $false
+            foreach ($pattern in $ignorePatterns) {
+                if ($file -like $pattern) {
+                    Write-Host "Ignoring file: $file (matches pattern: $pattern)"
+                    $ignoreFiles = $true
+                    break                
+                }
+            }
+            if ($ignoreFiles) {
+                Write-Host "File $file is ignored, continuing to next file."
+                continue
+            }
+            
+            # If we get here, file doesn't match any ignore patterns
+            Write-Host "Relevant change found: $file"
+            $ignoreRelease = $false
+            break
+        }
+        
+        # Exit if all changes should be ignored
+        if ($ignoreRelease) {
+            Write-Host "No relevant changes found, skipping release."
+            exit 1
+        }
     - name: Set env
       id: set-env
       shell: bash

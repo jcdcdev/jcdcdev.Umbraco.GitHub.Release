@@ -25,9 +25,40 @@ inputs:
     description: "Skip NuGet push"
     default: "false"
     required: false
+  ignore-files:
+    description: "Skip release if only these files are changed"
+    default: "SECURITY.md,.github/README.md"
+    required: false
 runs:
   using: "composite"
   steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check for changes
+      id: check-changes
+      shell: pwsh
+      run: |
+        # find the last release tag on the current branch
+        $LAST_RELEASE_TAG= git describe --tags --abbrev=0 || echo ""
+        # list all changed files since the last release tag
+        $CHANGED_FILES= git diff --name-only "$LAST_RELEASE_TAG...HEAD"
+        $IGNORE_RELEASE=$true
+        # iterate each changed file
+        for $FILE in $CHANGED_FILES; do
+          if (${{ inputs.ignore-files }} -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $FILE -like "$_" }) {
+            continue
+          }
+
+          IGNORE_RELEASE=$false
+          break
+        done
+        
+        if ($IGNORE_RELEASE) {
+          Write-Host "No relevant changes found, skipping release."
+          exit 1
+        }
     - name: Set env
       id: set-env
       shell: bash

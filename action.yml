@@ -107,7 +107,7 @@ runs:
         "SKIP=$ignoreRelease" | Out-File -FilePath $env:GITHUB_ENV -Append
 
     - name: Update PR title if release is skipped
-      if: ${{ env.SKIP == 'true' }} && github.event_name == 'pull_request' && github.event.action == 'closed'
+      if: ${{ env.SKIP == 'true' }} && ${{ github.event_name == 'pull_request'}} &&  ${{ github.event.action == 'closed' }}
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}

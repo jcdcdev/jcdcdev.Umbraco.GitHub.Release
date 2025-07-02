@@ -114,6 +114,10 @@ runs:
         PR_NUMBER: ${{ github.event.number }}
         PR_TITLE: "${{ inputs.version }} (release skipped)"
       run: |
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No PR number found, skipping title update."
+          exit 0
+        fi
         gh pr edit $PR_NUMBER --title "$PR_TITLE" --remove-label "🚀 release"
     - name: Set env
       if: ${{ env.SKIP == 'false' }}

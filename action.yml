@@ -114,7 +114,7 @@ runs:
         PR_NUMBER: ${{ github.event.number }}
         PR_TITLE: "${{ inputs.version }} (release skipped)"
       run: |
-        gh pr edit $PR_NUMBER --title "$PR_TITLE" --add-label "release-skipped" --remove-label "🚀 release"
+        gh pr edit $PR_NUMBER --title "$PR_TITLE" --remove-label "🚀 release"
     - name: Set env
       if: steps.check-changes.outputs.skip != 'true'
       id: set-env

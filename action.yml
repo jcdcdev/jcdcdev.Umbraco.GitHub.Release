@@ -27,7 +27,7 @@ inputs:
     required: false
   ignore-files:
     description: "Skip release if only these files are changed"
-    default: "SECURITY.md,.github/README.md"
+    default: "SECURITY.md,.github/README.md,docs/README_nuget.md"
     required: false
 runs:
   using: "composite"

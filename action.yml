@@ -129,7 +129,6 @@ runs:
         echo "NUGET_API_KEY=${{ inputs.nuget-api-key }}" >> $GITHUB_ENV
         echo "ARTIFACT_PATH=./packages" >> $GITHUB_ENV
         echo "NUGET_SOURCE=${{ inputs.nuget-source }}" >> $GITHUB_ENV
-        exit 1
     - name: Download package
       if: ${{ env.SKIP == 'false' }}
       uses: actions/download-artifact@v4

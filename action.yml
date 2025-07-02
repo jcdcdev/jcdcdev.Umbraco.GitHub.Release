@@ -27,7 +27,7 @@ inputs:
     required: false
   ignore-files:
     description: "Skip release if only these files are changed"
-    default: "SECURITY.md,.github/README.md,docs/README_nuget.md"
+    default: "SECURITY.md,.github/README.md,docs/README_nuget.md,.github/workflows/release.yml,.github/workflows/auto-assign.yml,.github/workflows/build.yml,.github/workflows/create-pr.yml,.github/workflows/sync-branches.yml,.github/workflows/update-releases.yml,docs/"
     required: false
 runs:
   using: "composite"

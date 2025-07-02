@@ -107,7 +107,7 @@ runs:
         "SKIP=$ignoreRelease" | Out-File -FilePath $env:GITHUB_ENV -Append
 
     - name: Update PR title if release is skipped
-      if: ${{ env.SKIP == 'true' }} && ${{ github.event_name == 'pull_request'}} &&  ${{ github.event.action == 'closed' }}
+      if: ${{ (env.SKIP == 'true') && (github.event_name == 'pull_request') && (github.event.action == 'closed') }}
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -137,7 +137,7 @@ runs:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_PATH }}
     - name: Push to NuGet
-      if: ${{ inputs.nuget-skip-push != 'true' }} && ${{ env.SKIP == 'false' }}
+      if: ${{ (inputs.nuget-skip-push != 'true') && (env.SKIP == 'false') }}
       shell: bash
       run: |
         dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }} --skip-duplicate

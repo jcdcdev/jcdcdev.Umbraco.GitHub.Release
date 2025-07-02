@@ -103,12 +103,19 @@ runs:
             break
         }
         
-        # Exit if all changes should be ignored
-        if ($ignoreRelease) {
-            Write-Host "No relevant changes found, skipping release."
-            exit 1
-        }
+        echo "ignore-release=$ignoreRelease" >> $env:GITHUB_OUTPUT
+
+    - name: Update PR title if release is skipped
+      if: steps.check-changes.outputs.ignore-release == 'true' && github.event_name == 'pull_request' && github.event.action == 'closed'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.number }}
+        PR_TITLE: "${{ inputs.version }} (release skipped)"
+      run: |
+        gh pr edit $PR_NUMBER --title "$PR_TITLE"
     - name: Set env
+      if: steps.check-changes.outputs.ignore-release != 'true'
       id: set-env
       shell: bash
       run: |
@@ -118,16 +125,18 @@ runs:
         echo "ARTIFACT_PATH=./packages" >> $GITHUB_ENV
         echo "NUGET_SOURCE=${{ inputs.nuget-source }}" >> $GITHUB_ENV
     - name: Download package
+      if: steps.check-changes.outputs.ignore-release != 'true'
       uses: actions/download-artifact@v4
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_PATH }}
     - name: Push to NuGet
-      if: ${{ inputs.nuget-skip-push != 'true' }}
+      if: ${{ inputs.nuget-skip-push != 'true' }} && steps.check-changes.outputs.ignore-release != 'true'
       shell: bash
       run: |
         dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }} --skip-duplicate
     - name: 🚀 Create release
+      if: steps.check-changes.outputs.ignore-release != 'true'
       uses: jcdcdev/jcdcdev.GitHub.CreateRelease@main
       with:
         version: ${{ env.VERSION }}

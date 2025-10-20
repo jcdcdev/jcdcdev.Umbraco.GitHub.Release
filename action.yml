@@ -141,7 +141,8 @@ runs:
           exit 0
         fi
 
-        gh pr edit $PR_NUMBER --title "$PR_TITLE" --add-label "⚠️ skipped"
+        gh label create "⚠️ release skipped" --color FFA500 --description "Indicates that the release was skipped due to only ignored files being changed." || echo "Label already exists, skipping creation."
+        gh pr edit $PR_NUMBER --title "$PR_TITLE" --add-label "⚠️ release skipped"
     - name: Update PR if release is not skipped
       if: ${{ (env.SKIP == 'false') && (github.event_name == 'pull_request') && (github.event.action == 'closed') }}
       shell: bash
@@ -155,6 +156,7 @@ runs:
           exit 0
         fi
 
+        gh label create "✅ released" --color 0E8A16 --description "Indicates that the release has been successfully published." || echo "Label already exists, skipping creation."
         gh pr edit $PR_NUMBER --title "$PR_TITLE" --add-label "✅ released"
     - name: Set env
       if: ${{ env.SKIP == 'false' }}

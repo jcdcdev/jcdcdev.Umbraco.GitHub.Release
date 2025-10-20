@@ -118,7 +118,7 @@ runs:
           exit 0
         fi
 
-        args=("edit" "$PR_NUMBER")
+        args=("edit" "--title" "$PR_TITLE" "$PR_NUMBER")
 
         mapfile -t labels < <(gh pr view "$PR_NUMBER" --json labels | jq -r '.labels[].name')
 

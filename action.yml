@@ -72,7 +72,7 @@ runs:
         Write-Host "Changed files since last tag:`n`n$changedFiles`n`n"
         # Initialize flag
         $ignoreRelease = $true
-        
+
         if (-not $changedFiles) {
             Write-Host "No changed files found since last tag, skipping release."
             exit 1
@@ -102,7 +102,7 @@ runs:
             $ignoreRelease = $false
             break
         }
-        
+
         Write-Host "SKIP=$ignoreRelease"
         "SKIP=$ignoreRelease" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -118,7 +118,19 @@ runs:
           echo "No PR number found, skipping title update."
           exit 0
         fi
+
+        # TODO: Obsolete - Will remove later
         gh pr edit $PR_NUMBER --title "$PR_TITLE" --remove-label "🚀 release"
+
+        args=("edit" "$PR_NUMBER" "--title" "$PR_TITLE")
+
+        mapfile -t labels < <(gh pr view "$PR_NUMBER" --json labels | jq -r '.labels[].name')
+
+        for label in "${labels[@]}"; do
+          args+=("--remove-label" "$label")
+        done
+
+        gh pr "${args[@]}"
     - name: Set env
       if: ${{ env.SKIP == 'false' }}
       id: set-env

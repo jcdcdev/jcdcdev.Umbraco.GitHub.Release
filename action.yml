@@ -106,7 +106,28 @@ runs:
         Write-Host "SKIP=$ignoreRelease"
         "SKIP=$ignoreRelease" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-    - name: Update PR title if release is skipped
+    - name: Remove all labels from PR
+      if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.number }}
+      run: |
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No PR number found, skipping label removal."
+          exit 0
+        fi
+
+        args=("edit" "$PR_NUMBER")
+
+        mapfile -t labels < <(gh pr view "$PR_NUMBER" --json labels | jq -r '.labels[].name')
+
+        for label in "${labels[@]}"; do
+          args+=("--remove-label" "$label")
+        done
+
+        gh pr "${args[@]}"
+    - name: Update PR if release is skipped
       if: ${{ (env.SKIP == 'true') && (github.event_name == 'pull_request') && (github.event.action == 'closed') }}
       shell: bash
       env:
@@ -119,18 +140,21 @@ runs:
           exit 0
         fi
 
-        # TODO: Obsolete - Will remove later
-        gh pr edit $PR_NUMBER --title "$PR_TITLE" --remove-label "🚀 release"
+        gh pr edit $PR_NUMBER --title "$PR_TITLE" --add-label "⚠️ skipped"
+    - name: Update PR if release is not skipped
+      if: ${{ (env.SKIP == 'false') && (github.event_name == 'pull_request') && (github.event.action == 'closed') }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.number }}
+        PR_TITLE: "${{ inputs.version }} (released)"
+      run: |
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No PR number found, skipping title update."
+          exit 0
+        fi
 
-        args=("edit" "$PR_NUMBER" "--title" "$PR_TITLE")
-
-        mapfile -t labels < <(gh pr view "$PR_NUMBER" --json labels | jq -r '.labels[].name')
-
-        for label in "${labels[@]}"; do
-          args+=("--remove-label" "$label")
-        done
-
-        gh pr "${args[@]}"
+        gh pr edit $PR_NUMBER --title "$PR_TITLE" --add-label "✅ released"
     - name: Set env
       if: ${{ env.SKIP == 'false' }}
       id: set-env

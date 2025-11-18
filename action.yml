@@ -29,11 +29,28 @@ inputs:
     description: "Skip release if only these files are changed"
     default: "SECURITY.md,.github/README.md,docs/README_nuget.md,.github/workflows/release.yml,.github/workflows/auto-assign.yml,.github/workflows/build.yml,.github/workflows/create-pr.yml,.github/workflows/sync-branches.yml,.github/workflows/update-releases.yml,docs/"
     required: false
+  strict-umbraco-version:
+    description: "Fails the build if the computed Input Major Version does not match this Action's Major version - Used to ensure builds are deterministic for Umbraco releases."
+    required: false
+    default: "true"
 runs:
   using: "composite"
   steps:
+    - name: Check Umbraco Version
+      id: check-umbraco-version
+      shell: bash
+      if: ${{ inputs.strict-umbraco-version == 'true' }}
+      run: |
+
+        MAJOR_VERSION=$(echo "${{ inputs.version }}" | cut -d. -f1)
+        UMBRACO_VERSION="17"
+        if [ "$MAJOR_VERSION" != "$UMBRACO_VERSION" ]; then
+          echo "Umbraco version mismatch - expected $UMBRACO_VERSION but got $MAJOR_VERSION"
+          echo "Check the branch you are building from is correct, GitVersion.yml is configured correctly and that you are using the correct version of this Action for the Umbraco version you are building."
+          exit 1
+        fi
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - name: Check for changes
@@ -170,7 +187,7 @@ runs:
         echo "NUGET_SOURCE=${{ inputs.nuget-source }}" >> $GITHUB_ENV
     - name: Download package
       if: ${{ env.SKIP == 'false' }}
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_PATH }}

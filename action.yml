@@ -1,5 +1,5 @@
 name: "🚀 Release Umbraco Package"
-description: ""
+description: "Create and publish a new release of an Umbraco package to NuGet."
 author: "James Carter"
 branding:
   icon: "refresh-cw"
@@ -26,8 +26,8 @@ inputs:
     default: "false"
     required: false
   ignore-files:
-    description: "Skip release if only these files are changed"
-    default: "SECURITY.md,.github/README.md,docs/README_nuget.md,.github/workflows/release.yml,.github/workflows/auto-assign.yml,.github/workflows/build.yml,.github/workflows/create-pr.yml,.github/workflows/sync-branches.yml,.github/workflows/update-releases.yml,docs/,GitVersion.yml"
+    description: "Skip release if only these files are changed (supports wildcards, e.g. docs/**, .github/workflows/*.yml)"
+    default: "SECURITY.md,.github/README.md,docs/**,.github/workflows/*.yml,GitVersion.yml"
     required: false
 runs:
   using: "composite"
@@ -38,73 +38,79 @@ runs:
         fetch-depth: 0
     - name: Check for changes
       id: check-changes
-      shell: pwsh
+      shell: bash
       run: |
-        $IGNORE_FILES="${{ inputs.ignore-files }}"
-        $currentBranch = git symbolic-ref --short HEAD 2>&1
-        $tags = git for-each-ref --sort=creatordate --format '%(refname:short)' refs/tags
-        $mergedTags = git tag --merged $currentBranch --sort=creatordate
+        IGNORE_FILES="${{ inputs.ignore-files }}"
+        CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>&1)
+        TAGS=$(git for-each-ref --sort=creatordate --format '%(refname:short)' refs/tags)
+        MERGED_TAGS=($(git tag --merged "$CURRENT_BRANCH" --sort=creatordate))
 
-        Write-Host "Current branch: $currentBranch"
-        $allowPrelease = $currentBranch -like "*/dev"
-        Write-Host "Tags on current branch: $mergedTags"
-        # iterate in reverse order to find the last tag
-        $lastTag = $null
-        for($i = $mergedTags.Count - 1; $i -ge 0; $i--) {
-            $tag = $mergedTags[$i]
-            # check if tag is a pre-release tag
-            if ($tag -like "*-*" -and !$allowPrelease) {
-                Write-Host "Skipping pre-release tag: $tag"
-                continue
-            }
-            $lastTag = $tag
-            Write-Host "Last release tag found: $lastTag"
-            break
-        }
+        echo "Current branch: $CURRENT_BRANCH"
+        if [[ "$CURRENT_BRANCH" == *"/dev" ]]; then
+          ALLOW_PRERELEASE=true
+        else
+          ALLOW_PRERELEASE=false
+        fi
+        echo "Tags on current branch: ${MERGED_TAGS[*]}"
 
-        if (-not $lastTag) {
-            Write-Host "No release tags found on current branch, skipping release."
-            exit 1
-        }
+        # Find last release tag (skip pre-release tags unless allowed)
+        LAST_TAG=""
+        for (( idx=${#MERGED_TAGS[@]}-1 ; idx>=0 ; idx-- )); do
+          TAG="${MERGED_TAGS[$idx]}"
+          if [[ "$TAG" == *-* && "$ALLOW_PRERELEASE" == "false" ]]; then
+            echo "Skipping pre-release tag: $TAG"
+            continue
+          fi
+          LAST_TAG="$TAG"
+          echo "Last release tag found: $LAST_TAG"
+          break
+        done
+
+        if [[ -z "$LAST_TAG" ]]; then
+          echo "No release tags found on current branch, skipping release."
+          exit 1
+        fi
 
         # List all changed files since the last release tag
-        $changedFiles = git diff --name-only "$lastTag...$currentBranch"
-        Write-Host "Changed files since last tag:`n`n$changedFiles`n`n"
-        # Initialize flag
-        $ignoreRelease = $true
+        CHANGED_FILES=$(git diff --name-only "$LAST_TAG...$CURRENT_BRANCH")
+        echo -e "Changed files since last tag:\n\n$CHANGED_FILES\n\n"
+        IGNORE_RELEASE=true
 
-        if (-not $changedFiles) {
-            Write-Host "No changed files found since last tag, skipping release."
-            exit 1
-        }
+        if [[ -z "$CHANGED_FILES" ]]; then
+          echo "No changed files found since last tag, skipping release."
+          exit 1
+        fi
 
-        # Iterate through changed files
-        foreach ($file in $changedFiles.Split()) {
-            # Split and trim ignore patterns
-            $ignorePatterns = @($IGNORE_FILES.Split(',').Trim())
-            
-            # Check if file matches any ignore pattern
-            $ignoreFiles = $false
-            foreach ($pattern in $ignorePatterns) {
-                if ($file -like $pattern) {
-                    Write-Host "Ignoring file: $file (matches pattern: $pattern)"
-                    $ignoreFiles = $true
-                    break                
-                }
-            }
-            if ($ignoreFiles) {
-                Write-Host "File $file is ignored, continuing to next file."
-                continue
-            }
-            
-            # If we get here, file doesn't match any ignore patterns
-            Write-Host "Relevant change found: $file"
-            $ignoreRelease = $false
+        # Convert ignore patterns to array
+        IFS=',' read -ra IGNORE_PATTERNS <<< "$IGNORE_FILES"
+
+        for FILE in $CHANGED_FILES; do
+          IGNORED=false
+          for PATTERN in "${IGNORE_PATTERNS[@]}"; do
+            PATTERN_TRIMMED=$(echo "$PATTERN" | xargs)
+            # Use bash extended globbing for ** and *
+            if [[ "$FILE" == $PATTERN_TRIMMED ]]; then
+              echo "Ignoring file: $FILE (matches pattern: $PATTERN_TRIMMED)"
+              IGNORED=true
+              break
+            fi
+            # Fallback: try glob match
+            shopt -s globstar nullglob
+            if [[ "$FILE" == $PATTERN_TRIMMED ]]; then
+              echo "Ignoring file: $FILE (matches pattern: $PATTERN_TRIMMED)"
+              IGNORED=true
+              break
+            fi
+          done
+          if ! $IGNORED; then
+            echo "Relevant change found: $FILE"
+            IGNORE_RELEASE=false
             break
-        }
+          fi
+        done
 
-        Write-Host "SKIP=$ignoreRelease"
-        "SKIP=$ignoreRelease" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "SKIP=$IGNORE_RELEASE"
+        echo "SKIP=$IGNORE_RELEASE" >> $GITHUB_ENV
 
     - name: Remove all labels from PR
       if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}

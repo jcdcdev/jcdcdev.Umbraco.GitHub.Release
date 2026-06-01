@@ -43,7 +43,7 @@ runs:
       run: |
 
         MAJOR_VERSION=$(echo "${{ inputs.version }}" | cut -d. -f1)
-        UMBRACO_VERSION="17"
+        UMBRACO_VERSION="18"
         if [ "$MAJOR_VERSION" != "$UMBRACO_VERSION" ]; then
           echo "Umbraco version mismatch - expected $UMBRACO_VERSION but got $MAJOR_VERSION"
           echo "Check the branch you are building from is correct, GitVersion.yml is configured correctly and that you are using the correct version of this Action for the Umbraco version you are building."

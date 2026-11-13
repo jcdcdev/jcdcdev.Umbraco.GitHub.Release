@@ -43,14 +43,14 @@ runs:
       run: |
 
         MAJOR_VERSION=$(echo "${{ inputs.version }}" | cut -d. -f1)
-        UMBRACO_VERSION="18"
+        UMBRACO_VERSION="19"
         if [ "$MAJOR_VERSION" != "$UMBRACO_VERSION" ]; then
           echo "Umbraco version mismatch - expected $UMBRACO_VERSION but got $MAJOR_VERSION"
           echo "Check the branch you are building from is correct, GitVersion.yml is configured correctly and that you are using the correct version of this Action for the Umbraco version you are building."
           exit 1
         fi
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7.0.1
       with:
         fetch-depth: 0
     - name: Check for changes
@@ -193,7 +193,7 @@ runs:
         echo "NUGET_SOURCE=${{ inputs.nuget-source }}" >> $GITHUB_ENV
     - name: Download package
       if: ${{ env.SKIP == 'false' }}
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v8
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_PATH }}
@@ -204,7 +204,7 @@ runs:
         dotnet nuget push ${{ env.ARTIFACT_PATH }}/**/*.nupkg -k ${{ env.NUGET_API_KEY }} -s ${{ env.NUGET_SOURCE }} --skip-duplicate
     - name: 🚀 Create release
       if: ${{ env.SKIP == 'false' }}
-      uses: jcdcdev/jcdcdev.GitHub.CreateRelease@main
+      uses: jcdcdev/jcdcdev.GitHub.CreateRelease@v1
       with:
         version: ${{ env.VERSION }}
         github-token: ${{ inputs.github-token }}
